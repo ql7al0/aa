@@ -9,7 +9,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- [ الإعدادات ] --
 local isEnabled = false
-local smoothing = 0.12 -- تم رفعه قليلاً لزيادة ثبات الإيم على الخصم
+local smoothing = 0.12 -- الثبات على الخصم
 local fovRadius = 150 -- مساحة البحث عن الخصم حول مؤشر الماوس
 
 -- [ بناء واجهة SaadHub ] --
@@ -109,15 +109,19 @@ RunService.RenderStepped:Connect(function(deltaTime)
     if isEnabled then
         local target = getClosestPlayer()
         if target then
-            -- رفع مستوى التصويب إلى الرأس/الصدر
-            local aimPosition = target.Position + Vector3.new(0, 1.5, 0)
+            -- [ التحسين الجديد ]: حساب سرعة الخصم لإضافة توقع الحركة (Prediction)
+            local targetVelocity = target.AssemblyLinearVelocity
+            local prediction = targetVelocity * 0.035 -- السكربت يسبق الخصم بهذي النسبة عشان الطلق يجي فيه وهو يركض
+            
+            -- رفع مستوى التصويب إلى الرأس/الصدر مع دمج توقع الحركة
+            local aimPosition = target.Position + Vector3.new(0, 1.5, 0) + prediction
             local targetCFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
             
             -- حساب حركة ماوس اللاعب (الالتفاف)
             local mouseDelta = UserInputService:GetMouseDelta()
             local activeSmoothing = smoothing
             
-            -- تم التعديل هنا: تقليل المقاومة بشكل كبير بمجرد تحريك الماوس ليعطيك حرية كاملة بالشاشة
+            -- تقليل المقاومة بشكل كبير بمجرد تحريك الماوس ليعطيك حرية كاملة بالشاشة
             if mouseDelta.Magnitude > 1.0 then
                 activeSmoothing = smoothing / 8 
             end
