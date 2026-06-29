@@ -9,7 +9,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- [ الإعدادات ] --
 local isEnabled = false
-local smoothing = 0.08 -- تم رفع الرقم قليلاً لأننا ربطناه بالفريمات ليكون أكثر نعومة واستجابة
+local smoothing = 0.12 -- تم رفعه قليلاً لزيادة ثبات الإيم على الخصم
 local fovRadius = 150 -- مساحة البحث عن الخصم حول مؤشر الماوس
 
 -- [ بناء واجهة SaadHub ] --
@@ -117,9 +117,9 @@ RunService.RenderStepped:Connect(function(deltaTime)
             local mouseDelta = UserInputService:GetMouseDelta()
             local activeSmoothing = smoothing
             
-            -- إذا كان اللاعب يحرك الماوس بسرعة (يلف الكاميرا)، نقلل قوة السحب عشان نعطيه حرية الحركة
-            if mouseDelta.Magnitude > 1.5 then
-                activeSmoothing = smoothing / 4 
+            -- تم التعديل هنا: تقليل المقاومة بشكل كبير بمجرد تحريك الماوس ليعطيك حرية كاملة بالشاشة
+            if mouseDelta.Magnitude > 1.0 then
+                activeSmoothing = smoothing / 8 
             end
             
             -- دمج السلاسة مع سرعة الفريمات (deltaTime) لضمان عدم وجود تقطيع نهائياً
