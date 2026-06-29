@@ -9,7 +9,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- [ الإعدادات ] --
 local isEnabled = false
-local smoothing = 0.04 -- سرعة السحب (كلما كان الرقم أقل، كان الايم أخف وأكثر طبيعية)
+local smoothing = 0.08 -- تم رفع الرقم قليلاً لأننا ربطناه بالفريمات ليكون أكثر نعومة واستجابة
 local fovRadius = 150 -- مساحة البحث عن الخصم حول مؤشر الماوس
 
 -- [ بناء واجهة SaadHub ] --
@@ -73,7 +73,7 @@ local function getClosestPlayer()
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid").Health > 0 then
-            -- التأكد من أن الخصم ليس خلف جدار (اختياري لزيادة الأمان)
+            -- التأكد من أن الخصم ليس خلف جدار
             local targetPos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
             
             if onScreen then
@@ -104,17 +104,28 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- حلقة التوجيه السلسة
-RunService.RenderStepped:Connect(function()
+-- [ التعديل هنا: حلقة التوجيه الذكية والمرنة ] --
+RunService.RenderStepped:Connect(function(deltaTime)
     if isEnabled then
         local target = getClosestPlayer()
         if target then
-            -- تم إضافة إزاحة (Vector3.new) لرفع مستوى التصويب إلى الرأس/الصدر لرؤية الخصم بوضوح
+            -- رفع مستوى التصويب إلى الرأس/الصدر
             local aimPosition = target.Position + Vector3.new(0, 1.5, 0)
-            
-            -- استخدام CFrame.Lerp لانتقال سلس جداً يخدع المراقبة
             local targetCFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothing)
+            
+            -- حساب حركة ماوس اللاعب (الالتفاف)
+            local mouseDelta = UserInputService:GetMouseDelta()
+            local activeSmoothing = smoothing
+            
+            -- إذا كان اللاعب يحرك الماوس بسرعة (يلف الكاميرا)، نقلل قوة السحب عشان نعطيه حرية الحركة
+            if mouseDelta.Magnitude > 1.5 then
+                activeSmoothing = smoothing / 4 
+            end
+            
+            -- دمج السلاسة مع سرعة الفريمات (deltaTime) لضمان عدم وجود تقطيع نهائياً
+            local finalLerp = math.clamp(activeSmoothing * (deltaTime * 60), 0.01, 0.99)
+            
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, finalLerp)
         end
     end
 end)
