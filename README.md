@@ -1,135 +1,163 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
+-- [[ SAADHUB OFFICIAL - FULL VERSION V102 (MODIFIED FOR BOTS ONLY) ]] --
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
+local player = game.Players.LocalPlayer
+local httpService = game:GetService("HttpService")
+local tweenService = game:GetService("TweenService")
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+local starterGui = game:GetService("StarterGui")
 
--- [ الإعدادات ] --
-local isEnabled = false
-local smoothing = 0.12 -- الثبات على الخصم
-local fovRadius = 150 -- مساحة البحث عن الخصم حول مؤشر الماوس
+-- [[ نظام الحفظ للإشعار الجديد ]] --
+local updateFileName = "SaadHub_Safe_V102_Jitter.json"
+local function shouldNotifyUpdate()
+    local success, content = pcall(function() return readfile(updateFileName) end)
+    if success and content == "done" then return false end
+    pcall(function() writefile(updateFileName, "done") end)
+    return true
+end
+local isFirstUpdateNotify = shouldNotifyUpdate()
 
--- [ بناء واجهة SaadHub ] --
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ToggleButton = Instance.new("TextButton")
-local UIStroke = Instance.new("UIStroke")
-local UICorner = Instance.new("UICorner")
+-- [[ نظام الحفظ الأصلي ]] --
+local fileName = "SaadHub_Global_Check.json"
+local function shouldNotify()
+    local success, content = pcall(function() return readfile(fileName) end)
+    if success and content == "done" then return false end
+    pcall(function() writefile(fileName, "done") end)
+    return true
+end
+local isFirstTime = shouldNotify()
 
--- حماية الواجهة من اكتشاف اللعبة (Anti-Cheat Bypass)
-local success, err = pcall(function()
-    ScreenGui.Parent = game:GetService("CoreGui")
+-- [[ 1. نظام العداد (Live Users) ]] --
+local liveCount = "1"
+task.spawn(function()
+    pcall(function() 
+        local response = game:HttpGet("https://api.counterapi.dev/v1/saadhub_official_unique/hits/up")
+        local data = httpService:JSONDecode(response)
+        if data and data.count then liveCount = tostring(data.count) end
+    end)
 end)
-if not success then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- [[ إرسال الإشعار ]] --
+task.spawn(function()
+    if isFirstUpdateNotify then
+        starterGui:SetCore("SendNotification", {
+            Title = "SHIELD ACTIVE 🛡️",
+            Text = "تم تفعيل السرعة القصوى مع الحماية!",
+            Icon = "rbxassetid://13054812323",
+            Duration = 6
+        })
+    end
+end)
+
+-- [[ 4. واجهة التحكم ]] --
+local mainGui = Instance.new("ScreenGui", player.PlayerGui); mainGui.ResetOnSpawn = false
+local toggle = Instance.new("TextButton", mainGui)
+toggle.Size = UDim2.new(0, 140, 0, 45); toggle.Position = UDim2.new(0.05, 0, 0.4, 0); toggle.Text = "SAADHUB: ON"
+toggle.BackgroundColor3 = Color3.fromRGB(170, 0, 0); toggle.TextColor3 = Color3.new(1, 1, 1); toggle.Font = Enum.Font.GothamBold; toggle.TextSize = 16; Instance.new("UICorner", toggle)
+Instance.new("UIStroke", toggle).Color = Color3.new(1, 1, 1)
+
+local dragCircle = Instance.new("Frame", toggle)
+dragCircle.Size = UDim2.new(0, 25, 0, 25); dragCircle.Position = UDim2.new(0.5, -12.5, 0, -32)
+dragCircle.BackgroundTransparency = 1; Instance.new("UICorner", dragCircle).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", dragCircle).Transparency = 1
+
+local dragging, dragStart, startPos
+dragCircle.InputBegan:Connect(function(input) 
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+        dragging = true; dragStart = input.Position; startPos = toggle.Position 
+    end 
+end)
+userInputService.InputChanged:Connect(function(input) 
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
+        local delta = input.Position - dragStart; 
+        toggle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
+    end 
+end)
+userInputService.InputEnded:Connect(function() dragging = false end)
+
+
+-- [[ 6. منطق الالتصاق واللمس السريع ]] --
+local active = true
+local lockedTarget = nil
+
+local function fastTouch(targetChar, tool)
+    local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("Part")
+    if handle and targetChar:FindFirstChild("HumanoidRootPart") then
+        local dist = (player.Character.HumanoidRootPart.Position - targetChar.HumanoidRootPart.Position).Magnitude
+        if dist < 3.8 then
+            task.spawn(function()
+                for i = 1, 15 do
+                    firetouchinterest(targetChar.HumanoidRootPart, handle, 0)
+                    firetouchinterest(targetChar.HumanoidRootPart, handle, 1)
+                end
+            end)
+        end
+    end
 end
 
-ScreenGui.Name = "SaadHub_NeuralAim"
+-- [[ وظيفة التغيير ]] --
+local function toggleScript()
+    active = not active
+    toggle.Text = active and "SAADHUB: ON" or "SAADHUB: OFF"
+    toggle.BackgroundColor3 = active and Color3.fromRGB(170, 0, 0) or Color3.fromRGB(40, 40, 40)
+    if not active then lockedTarget = nil end
+end
 
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- أسود داكن
-MainFrame.Position = UDim2.new(0.8, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 180, 0, 80)
-MainFrame.Active = true
-MainFrame.Draggable = true -- قابل للسحب بالشاشة
+-- تفعيل/إيقاف عن طريق كليك الماوس اليسار
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        toggleScript()
+    end
+end)
 
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
+-- الزر اليدوي أيضاً يعمل
+toggle.MouseButton1Click:Connect(toggleScript)
 
-UIStroke.Color = Color3.fromRGB(138, 43, 226) -- بنفسجي نيون (Neon Purple)
-UIStroke.Thickness = 2
-UIStroke.Parent = MainFrame
+runService.RenderStepped:Connect(function()
+    if active and player.Character and player.Character:FindFirstChild("Humanoid") then
+        local bpTool = player.Backpack:FindFirstChildOfClass("Tool")
+        if bpTool then player.Character.Humanoid:EquipTool(bpTool) end
 
-Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Title.BackgroundTransparency = 1
-Title.Size = UDim2.new(1, 0, 0.4, 0)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "SaadHub Aim"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 14
-
-ToggleButton.Parent = MainFrame
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.45, 0)
-ToggleButton.Size = UDim2.new(0.8, 0, 0.4, 0)
-ToggleButton.Font = Enum.Font.GothamSemibold
-ToggleButton.Text = "OFF"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 50, 50) -- أحمر عند الإيقاف
-ToggleButton.TextSize = 14
-
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(0, 6)
-ButtonCorner.Parent = ToggleButton
-
--- [ نظام التخفي العصبي - Neural Stealth Logic ] --
-local function getClosestPlayer()
-    local closestTarget = nil
-    local shortestDistance = fovRadius
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid").Health > 0 then
-            -- التأكد من أن الخصم ليس خلف جدار
-            local targetPos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
-            
-            if onScreen then
-                local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-                local distance = (Vector2.new(targetPos.X, targetPos.Y) - mousePos).Magnitude
-
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closestTarget = player.Character.HumanoidRootPart
+        local tool = player.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            -- التحقق مما إذا كان الهدف الحالي لا يزال صالحاً (موجود، حي، وليس لاعباً حقيقياً)
+            local isPlayer = lockedTarget and game.Players:GetPlayerFromCharacter(lockedTarget)
+            if not lockedTarget or not lockedTarget.Parent or lockedTarget.Humanoid.Health <= 0 or isPlayer then
+                local cDist = math.huge; lockedTarget = nil
+                
+                -- البحث في Workspace عن أي مودل غير اللاعبين
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("Model") and v ~= player.Character and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+                        -- هذا الشرط يتأكد أن الهدف ليس ضمن قائمة اللاعبين الحقيقيين (أي أنه بوت)
+                        if not game.Players:GetPlayerFromCharacter(v) then
+                            local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+                            if d < cDist then 
+                                cDist = d
+                                lockedTarget = v 
+                            end
+                        end
+                    end
                 end
             end
-        end
-    end
-    return closestTarget
-end
+            
+            if lockedTarget and lockedTarget:FindFirstChild("HumanoidRootPart") then
+                local targetRoot = lockedTarget.HumanoidRootPart
+                local myRoot = player.Character.HumanoidRootPart
+                local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                
+                -- [[ ميزة التذبذب الذكي المطلوبة: بين 2.5 و 3.5 ]] --
+                local smartOffset = math.random(25, 35) / 10 
+                
+                if dist > smartOffset then
+                    player.Character.Humanoid:Move((targetRoot.Position - myRoot.Position).Unit, false) 
+                end
 
--- زر التفعيل والإيقاف
-ToggleButton.MouseButton1Click:Connect(function()
-    isEnabled = not isEnabled
-    if isEnabled then
-        ToggleButton.Text = "ON"
-        ToggleButton.TextColor3 = Color3.fromRGB(50, 255, 50) -- أخضر عند التشغيل
-        UIStroke.Color = Color3.fromRGB(255, 215, 0) -- يتغير لذهبي عند التفعيل (Gold)
-    else
-        ToggleButton.Text = "OFF"
-        ToggleButton.TextColor3 = Color3.fromRGB(255, 50, 50)
-        UIStroke.Color = Color3.fromRGB(138, 43, 226) -- يرجع بنفسجي نيون
-    end
-end)
-
--- [ التعديل هنا: حلقة التوجيه الذكية والمرنة ] --
-RunService.RenderStepped:Connect(function(deltaTime)
-    if isEnabled then
-        local target = getClosestPlayer()
-        if target then
-            -- [ التحسين الجديد ]: حساب سرعة الخصم لإضافة توقع الحركة (Prediction)
-            local targetVelocity = target.AssemblyLinearVelocity
-            local prediction = targetVelocity * 0.035 -- السكربت يسبق الخصم بهذي النسبة عشان الطلق يجي فيه وهو يركض
-            
-            -- رفع مستوى التصويب إلى الرأس/الصدر مع دمج توقع الحركة
-            local aimPosition = target.Position + Vector3.new(0, 1.5, 0) + prediction
-            local targetCFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
-            
-            -- حساب حركة ماوس اللاعب (الالتفاف)
-            local mouseDelta = UserInputService:GetMouseDelta()
-            local activeSmoothing = smoothing
-            
-            -- تقليل المقاومة بشكل كبير بمجرد تحريك الماوس ليعطيك حرية كاملة بالشاشة
-            if mouseDelta.Magnitude > 1.0 then
-                activeSmoothing = smoothing / 8 
+                fastTouch(lockedTarget, tool)
             end
-            
-            -- دمج السلاسة مع سرعة الفريمات (deltaTime) لضمان عدم وجود تقطيع نهائياً
-            local finalLerp = math.clamp(activeSmoothing * (deltaTime * 60), 0.01, 0.99)
-            
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, finalLerp)
+        else 
+            lockedTarget = nil 
         end
     end
 end)
+
+
