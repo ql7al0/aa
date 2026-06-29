@@ -109,8 +109,11 @@ RunService.RenderStepped:Connect(function()
     if isEnabled then
         local target = getClosestPlayer()
         if target then
+            -- تم إضافة إزاحة (Vector3.new) لرفع مستوى التصويب إلى الرأس/الصدر لرؤية الخصم بوضوح
+            local aimPosition = target.Position + Vector3.new(0, 1.5, 0)
+            
             -- استخدام CFrame.Lerp لانتقال سلس جداً يخدع المراقبة
-            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
             Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, smoothing)
         end
     end
