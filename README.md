@@ -4,7 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local normalSpeed = 16
-local targetSpeed = 20
+local targetSpeed = 30
 local active = true -- حالة الزر (يعمل افتراضياً عند التشغيل)
 
 -- [[ 1. تصميم واجهة الزر (من السكربت الثاني) ]] --
