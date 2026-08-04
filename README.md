@@ -1,105 +1,77 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-
 local player = Players.LocalPlayer
-local normalSpeed = 16
-local targetSpeed = 20
-local active = true -- حالة الزر (يعمل افتراضياً عند التشغيل)
 
--- [[ 1. تصميم واجهة الزر (من السكربت الثاني) ]] --
-local mainGui = Instance.new("ScreenGui", player.PlayerGui)
-mainGui.ResetOnSpawn = false
+-- ==========================================
+-- 1. إعدادات إخفاء وإظهار الواجهة (GUI)
+-- ==========================================
 
-local toggle = Instance.new("TextButton", mainGui)
-toggle.Size = UDim2.new(0, 140, 0, 45)
-toggle.Position = UDim2.new(0.05, 0, 0.4, 0)
-toggle.Text = "SAADHUB: ON"
-toggle.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-toggle.TextColor3 = Color3.new(1, 1, 1)
-toggle.Font = Enum.Font.GothamBold
-toggle.TextSize = 16
-Instance.new("UICorner", toggle)
+-- ملاحظة مهمة: استبدل "ScreenGui" باسم الواجهة الخاصة بك أو مسارها الصحيح
+local myGui = game.CoreGui:FindFirstChild("ScreenGui") 
 
-local stroke = Instance.new("UIStroke", toggle)
-stroke.Color = Color3.new(1, 1, 1)
+local isCtrlHeld = false
 
--- [[ 2. جعل الزر قابل للسحب (Drag) ]] --
-local dragCircle = Instance.new("Frame", toggle)
-dragCircle.Size = UDim2.new(0, 25, 0, 25)
-dragCircle.Position = UDim2.new(0.5, -12.5, 0, -32)
-dragCircle.BackgroundTransparency = 1
-local dragCorner = Instance.new("UICorner", dragCircle)
-dragCorner.CornerRadius = UDim.new(1, 0)
-local dragStroke = Instance.new("UIStroke", dragCircle)
-dragStroke.Transparency = 1
-
-local dragging, dragStart, startPos
-dragCircle.InputBegan:Connect(function(input) 
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
-        dragging = true
-        dragStart = input.Position
-        startPos = toggle.Position 
-    end 
-end)
-UserInputService.InputChanged:Connect(function(input) 
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
-        local delta = input.Position - dragStart
-        toggle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) 
-    end 
-end)
-UserInputService.InputEnded:Connect(function() 
-    dragging = false 
-end)
-
--- [[ 3. نظام التشغيل والإيقاف للزر ]] --
-local function toggleScript()
-    active = not active
-    toggle.Text = active and "SAADHUB: ON" or "SAADHUB: OFF"
-    toggle.BackgroundColor3 = active and Color3.fromRGB(170, 0, 0) or Color3.fromRGB(40, 40, 40)
-    
-    -- إذا تم إطفاء الزر، قم بإرجاع السرعة للطبيعي فوراً
-    if not active and player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = normalSpeed
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- التحقق إذا الزر المضغوط هو Ctrl (يمين أو يسار)
+    if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        isCtrlHeld = true
+        task.wait(3) -- الانتظار 3 ثواني
+        
+        -- إذا لا زال الزر مضغوط بعد 3 ثواني
+        if isCtrlHeld then
+            if myGui then
+                myGui.Enabled = not myGui.Enabled -- يعكس الحالة (إخفاء/إظهار)
+            end
         end
     end
-end
--- ربط الضغط على الزر بتغيير الحالة
-toggle.MouseButton1Click:Connect(toggleScript)
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+        isCtrlHeld = false -- إلغاء الضغطة إذا شال يده عن الزر
+    end
+end)
 
 
--- [[ 4. السكربت الأول (سكربت السرعة والقنبلة) ]] --
+-- ==========================================
+-- 2. إعدادات سرعة المشي والقنبلة
+-- ==========================================
 
--- دالة لقراءة وقت القنبلة من اللعبة
-local function getBombTime()
-    -- استبدل هذا الكود بالمسار الصحيح للعداد
-    return -1 
-end
+local isBombCycleRunning = false
 
--- التشغيل في كل إطار (Frame)
-RunService.Heartbeat:Connect(function()
-    -- إذا كان الزر على حالة OFF، نوقف عمل السكربت نهائياً هنا
-    if not active then return end 
-
-    local character = player.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+local function startBombSpeedCycle()
+    if isBombCycleRunning then return end
+    isBombCycleRunning = true
     
-    -- التحقق من أن الشخصية موجودة وحية
-    if humanoid and humanoid.Health > 0 then
-        local bombTime = getBombTime()
-        
-        -- إذا وصل وقت القنبلة إلى 2
-        if bombTime == 2 then
-            if humanoid.WalkSpeed ~= targetSpeed then
-                humanoid.WalkSpeed = targetSpeed
-            end
-        else
-            -- إذا كان الوقت مختلفاً، ترجع السرعة إلى 16
-            if humanoid.WalkSpeed ~= normalSpeed then
-                humanoid.WalkSpeed = normalSpeed
-            end
+    -- يشتغل على ثانية 2
+    task.wait(2)
+    
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 20
         end
+    end
+    
+    -- ينتظر 8 ثواني عشان يصير المجموع 10 ثواني من وقت ظهور القنبلة
+    task.wait(8)
+    
+    -- يطفى على ثانية 10 ويرجع السرعة الطبيعية
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+    end
+    
+    isBombCycleRunning = false
+end
+
+-- البحث عن القنبلة عند ظهورها في الماب
+-- إذا كان اسم القنبلة مختلف في المود، تقدر تغير كلمة "bomb" للاسم الفعلي
+game.Workspace.DescendantAdded:Connect(function(descendant)
+    if string.find(string.lower(descendant.Name), "bomb") then
+        task.spawn(startBombSpeedCycle)
     end
 end)
