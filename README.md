@@ -12,6 +12,7 @@ local mainGui = Instance.new("ScreenGui", player.PlayerGui)
 mainGui.ResetOnSpawn = false
 
 local toggle = Instance.new("TextButton", mainGui)
+toggle.Visible = false -- تمت إضافة هذا السطر لإخفاء الزر بالكامل
 toggle.Size = UDim2.new(0, 140, 0, 45)
 toggle.Position = UDim2.new(0.05, 0, 0.4, 0)
 toggle.Text = "SAADHUB: ON"
